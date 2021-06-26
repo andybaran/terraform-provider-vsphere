@@ -114,6 +114,28 @@ func resourceVSphereLicenseCreate(d *schema.ResourceData, meta interface{}) erro
 	return resourceVSphereLicenseRead(d, meta)
 }
 
+/*
+func assign()
+https://github.com/vmware/govmomi/blob/master/govc/license/assign.go
+https://github.com/vmware/govmomi/blob/93851bd6e14df055d86661de494119e6bacb2192/govc/license/assign.go#L98
+*/
+
+func resourceVSphereLicenseAssign(d *schema.ResourceData, meta interface{}) error {
+
+	log.Println("[INFO] Running the assign license method")
+
+	client := meta.(*Client).vimClient
+	manager := license.NewManager(client.Client)
+	assignManager := manager.AssignmentManager() //ToDo: how do I get my ctx passed to this?
+
+	//ToDo : err if manager not instantiated
+
+	assignManager.Update() //ToDo: Obviosuly fill this in
+
+	return resourceVSphereLicenseRead(d, meta)
+
+}
+
 func resourceVSphereLicenseRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("[INFO] Running the read method")
 
@@ -250,9 +272,3 @@ func keyValuesToMap(keyValues []types.KeyValue) map[string]interface{} {
 	}
 	return KVMap
 }
-
-/*
-func assign()
-https://github.com/vmware/govmomi/blob/master/govc/license/assign.go
-https://github.com/vmware/govmomi/blob/93851bd6e14df055d86661de494119e6bacb2192/govc/license/assign.go#L98
-*/
