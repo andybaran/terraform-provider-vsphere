@@ -43,6 +43,10 @@ func resourceVSphereLicense() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
+			"id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 
 			// computed properties returned by the API
 			"edition_key": {
@@ -126,11 +130,17 @@ func resourceVSphereLicenseAssign(d *schema.ResourceData, meta interface{}) erro
 
 	client := meta.(*Client).vimClient
 	manager := license.NewManager(client.Client)
-	assignManager := manager.AssignmentManager() //ToDo: how do I get my ctx passed to this?
 
-	//ToDo : err if manager not instantiated
+	assignManager, err := manager.AssignmentManager(context.TODO())
+	if err != nil {
+		return err
+	}
 
-	assignManager.Update() //ToDo: Obviosuly fill this in
+	key := d.Get("license_key").(string)
+	id := d.Get("id").(string)
+	name := d.Get("name").(string)
+
+	assignManager.Update(context.TODO(), id, key, name)
 
 	return resourceVSphereLicenseRead(d, meta)
 
