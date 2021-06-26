@@ -250,3 +250,9 @@ func keyValuesToMap(keyValues []types.KeyValue) map[string]interface{} {
 	}
 	return KVMap
 }
+
+/*
+func assign()
+https://github.com/vmware/govmomi/blob/master/govc/license/assign.go
+https://github.com/vmware/govmomi/blob/93851bd6e14df055d86661de494119e6bacb2192/govc/license/assign.go#L98
+*/
