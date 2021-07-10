@@ -47,11 +47,11 @@ data "vsphere_datacenter" "dc" {
 }
 
 resource "vsphere_license" "license" {
-	license_key = "0060Q-L910P-18KGD-0T8KH-0TX0M"
+	license_key = "1234-1234-1234-1234-1234"
 }
 
 data "vsphere_license" "license" {
-  license_key = "0060Q-L910P-18KGD-0T8KH-0TX0M"
+  license_key = "1234-1234-1234-1234-1234"
 }
 `, os.Getenv("TF_VAR_VSPHERE_DATACENTER"))
 }
