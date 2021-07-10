@@ -43,10 +43,6 @@ func resourceVSphereLicense() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
-			"id": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 
 			// computed properties returned by the API
 			"edition_key": {
@@ -116,34 +112,6 @@ func resourceVSphereLicenseCreate(d *schema.ResourceData, meta interface{}) erro
 	d.SetId(info.LicenseKey)
 
 	return resourceVSphereLicenseRead(d, meta)
-}
-
-/*
-func assign()
-https://github.com/vmware/govmomi/blob/master/govc/license/assign.go
-https://github.com/vmware/govmomi/blob/93851bd6e14df055d86661de494119e6bacb2192/govc/license/assign.go#L98
-*/
-
-func resourceVSphereLicenseAssign(d *schema.ResourceData, meta interface{}) error {
-
-	log.Println("[INFO] Running the assign license method")
-
-	client := meta.(*Client).vimClient
-	manager := license.NewManager(client.Client)
-
-	assignManager, err := manager.AssignmentManager(context.TODO())
-	if err != nil {
-		return err
-	}
-
-	key := d.Get("license_key").(string)
-	id := d.Get("id").(string)
-	name := d.Get("name").(string)
-
-	assignManager.Update(context.TODO(), id, key, name)
-
-	return resourceVSphereLicenseRead(d, meta)
-
 }
 
 func resourceVSphereLicenseRead(d *schema.ResourceData, meta interface{}) error {
