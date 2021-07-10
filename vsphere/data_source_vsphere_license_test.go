@@ -46,7 +46,7 @@ data "vsphere_datacenter" "dc" {
   name = "%s"
 }
 
-resource "vsphere_license "license" {
+resource "vsphere_license" "license" {
 	license_key = "0060Q-L910P-18KGD-0T8KH-0TX0M"
 }
 
