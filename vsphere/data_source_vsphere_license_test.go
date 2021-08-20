@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+
+	//"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-var testAccDataSourceVSphereLicenseExpectedRegexp = regexp.MustCompile("^group-v")
+// var testAccDataSourceVSphereLicenseExpectedRegexp = regexp.MustCompile("^group-v")
 
 func TestAccDataSourceVSphereLicense_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
@@ -24,9 +26,9 @@ func TestAccDataSourceVSphereLicense_basic(t *testing.T) {
 				Config: testAccDataSourceVSphereLicenseConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestMatchResourceAttr(
-						"data.vsphere_license.license_key",
+						"data.vsphere_license.license",
 						"id",
-						testAccDataSourceVSphereFolderExpectedRegexp,
+						regexp.MustCompile(os.Getenv("TF_VAR_VSPHERE_LICENSE")),
 					),
 				),
 			},
@@ -35,8 +37,8 @@ func TestAccDataSourceVSphereLicense_basic(t *testing.T) {
 }
 
 func testAccDataSourceVSphereLicensePreCheck(t *testing.T) {
-	if os.Getenv("TF_VAR_VSPHERE_DATACENTER") == "" {
-		t.Skip("set TF_VAR_VSPHERE_DATACENTER to run vsphere_folder acceptance tests")
+	if os.Getenv("TF_VAR_VSPHERE_LICENSE") == "" {
+		t.Skip("set TF_VAR_VSPHERE_LICENSE to run vsphere_license acceptance tests")
 	}
 }
 
@@ -46,12 +48,8 @@ data "vsphere_datacenter" "dc" {
   name = "%s"
 }
 
-resource "vsphere_license" "license" {
-	license_key = "1234-1234-1234-1234-1234"
-}
-
 data "vsphere_license" "license" {
-  license_key = "1234-1234-1234-1234-1234"
+  license_key = "%s"
 }
-`, os.Getenv("TF_VAR_VSPHERE_DATACENTER"))
+`, os.Getenv("TF_VAR_VSPHERE_DATACENTER"), os.Getenv("TF_VAR_VSPHERE_LICENSE"))
 }

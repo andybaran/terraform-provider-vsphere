@@ -52,7 +52,7 @@ func dataSourceVSphereLicenseRead(d *schema.ResourceData, meta interface{}) erro
 
 	client := meta.(*Client).vimClient
 	manager := license.NewManager(client.Client)
-
+	licenseKey := d.Get("license_key").(string)
 	if info := getLicenseInfoFromKey(d.Get("license_key").(string), manager); info != nil {
 		log.Println("[INFO] Setting the values")
 		_ = d.Set("edition_key", info.EditionKey)
@@ -60,6 +60,8 @@ func dataSourceVSphereLicenseRead(d *schema.ResourceData, meta interface{}) erro
 		_ = d.Set("used", info.Used)
 		_ = d.Set("name", info.Name)
 		_ = d.Set("labels", keyValuesToMap(info.Labels))
+		d.SetId(licenseKey)
+
 	} else {
 		return ErrNoSuchKeyFound
 	}
