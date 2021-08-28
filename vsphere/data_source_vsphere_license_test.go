@@ -11,8 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-// var testAccDataSourceVSphereLicenseExpectedRegexp = regexp.MustCompile("^group-v")
-
 func TestAccDataSourceVSphereLicense_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
