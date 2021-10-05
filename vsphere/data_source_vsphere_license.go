@@ -16,13 +16,11 @@ func dataSourceVSphereLicense() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-				Description: "VMware issued license key",
 			},
 			"labels": {
 				Type:     schema.TypeMap,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-				Description: "Label(s) to attach to the license key",
 			},
 			"id": {
 				Type:     schema.TypeString,
