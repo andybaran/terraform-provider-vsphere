@@ -9,7 +9,7 @@ description: |-
 # vsphere\_license
 
 The `vsphere_license` data source can be used to get the general attributes of a
-vSphere license.   
+vSphere license.
 
 ## Example Usage
 
@@ -34,4 +34,3 @@ The following attributes are exported:
 * `total` - Total number of units (example: CPUs) contained in the license.
 * `used` - The number of units (example: CPUs) assigned to this license.
 * `name` - The display name for the license.
-
