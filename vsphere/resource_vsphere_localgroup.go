@@ -52,11 +52,18 @@ func resourceVSphereLocalgroupCreate(d *schema.ResourceData, meta interface{}) e
 	defer cancel()
 
 	ssoadminClient, err := ssoadmin.NewClient(ctx, client.Client)
-
-	err = ssoadminClient.CreateGroup(ctx, d.Get("name").(string), types.AdminGroupDetails{Description: d.Get("details").(string)})
-
 	if err != nil {
-		return fmt.Errorf("Error creating Local group: %s", err)
+		return fmt.Errorf("error creating ssoadmin client %s", err)
+	}
+
+	err = ssoadminClient.Login(ctx)
+	if err != nil {
+		return fmt.Errorf("eror logging in...?: %s", err)
+	}
+	println("We're logged in")
+	err = ssoadminClient.CreateGroup(ctx, d.Get("name").(string), types.AdminGroupDetails{Description: d.Get("details").(string)})
+	if err != nil {
+		return fmt.Errorf("error creating local group: %s", err)
 	}
 
 	thisGroup, err := ssoadminClient.FindGroup(ctx, d.Get("name").(string))
