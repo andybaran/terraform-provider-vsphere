@@ -2,47 +2,41 @@ package vsphere
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"path"
-	"strings"
+	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/hashicorp/terraform-provider-vsphere/vsphere/internal/helper/Localgroup"
 	"github.com/hashicorp/terraform-provider-vsphere/vsphere/internal/helper/customattribute"
-	"github.com/hashicorp/terraform-provider-vsphere/vsphere/internal/helper/viapi"
-	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/ssoadmin"
-	"github.com/vmware/govmomi/vim25/types"
+	"github.com/vmware/govmomi/ssoadmin/types"
 )
 
 func resourceVSphereLocalgroup() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceVSphereLocalgroupCreate,
 		Read:   resourceVSphereLocalgroupRead,
-		Update: resourceVSphereLocalgroupUpdate,
-		Delete: resourceVSphereLocalgroupDelete,
-		Importer: &schema.ResourceImporter{
-			State: resourceVSphereLocalgroupImport,
-		},
+		Update: resourceVSphereLocalgroupRead,
+		Delete: resourceVSphereLocalgroupRead,
+		/*Importer: &schema.ResourceImporter{
+			State: resourceVSphereLocalgroupRead,
+		},*/
 
 		SchemaVersion: 1,
-		MigrateState:  resourceVSphereLocalgroupMigrateState,
+		//	MigrateState:  resourceVSphereLocalgroupMigrateState,
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:         schema.TypeString,
-				Description:  "The name of the Local Group.",
-				Required:     true,
-				StateFunc:    Localgroup.NormalizePath,
-				ValidateFunc: validation.NoZeroValues,
+				Type:        schema.TypeString,
+				Description: "The name of the Local Group.",
+				Required:    true,
+				/*StateFunc:    Localgroup.NormalizePath,
+				ValidateFunc: validation.NoZeroValues,*/
 			},
 			"details": {
-				Type:         schema.TypeString,
-				Description:  "The details of the Local Group.",
-				Required:     true,
-				StateFunc:    Localgroup.NormalizePath,
-				ValidateFunc: validation.NoZeroValues,
+				Type:        schema.TypeString,
+				Description: "The details of the Local Group.",
+				Required:    true,
+				/*StateFunc:    Localgroup.NormalizePath,
+				ValidateFunc: validation.NoZeroValues,*/
 			},
 			// Tagging
 			vSphereTagAttributeKey: tagsSchema(),
@@ -54,108 +48,42 @@ func resourceVSphereLocalgroup() *schema.Resource {
 
 func resourceVSphereLocalgroupCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).vimClient
-	tagsClient, err := tagsManagerIfDefined(d, meta)
-	if err != nil {
-		return err
-	}
-	// Verify a proper vCenter before proceeding if custom attributes are defined
-	attrsProcessor, err := customattribute.GetDiffProcessorIfAttributesDefined(client, d)
-	if err != nil {
-		return err
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 	defer cancel()
 
-	ssoadminClient := ssoadmin.NewClient(client)
+	ssoadminClient, err := ssoadmin.NewClient(ctx, client.Client)
 
-	err = ssoadminClient.CreateGroup(ctx, d.Get("name").(string), d.Get("details").(string))
+	err = ssoadminClient.CreateGroup(ctx, d.Get("name").(string), types.AdminGroupDetails{Description: d.Get("details").(string)})
 
 	if err != nil {
-		return fmt.Errorf("error creating Local group: %s", err)
+		return fmt.Errorf("Error creating Local group: %s", err)
 	}
 
-	thisGroup := ssoadminClient.FindGroup(d.Get("name").(string))
-	d.SetId(thisGroup.Reference().Value)
+	thisGroup, err := ssoadminClient.FindGroup(ctx, d.Get("name").(string))
 
-	// Apply any pending tags now
-	if tagsClient != nil {
-		if err := processTagDiff(tagsClient, d, thisGroup); err != nil {
-			return fmt.Errorf("error updating tags: %s", err)
-		}
-	}
-
-	// Set custom attributes
-	if attrsProcessor != nil {
-		if err := attrsProcessor.ProcessDiff(thisGroup); err != nil {
-			return fmt.Errorf("error setting custom attributes: %s", err)
-		}
-	}
+	d.SetId(thisGroup.Id.Name)
 
 	return resourceVSphereLocalgroupRead(d, meta)
 }
 
 func resourceVSphereLocalgroupRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).vimClient
-	fo, err := Localgroup.FromID(client, d.Id())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultAPITimeout)
+	defer cancel()
+
+	ssoadminClient, err := ssoadmin.NewClient(ctx, client.Client)
 	if err != nil {
-		return fmt.Errorf("cannot locate Localgroup: %s", err)
+		return fmt.Errorf("Error reading Local group: %s", err)
 	}
-
-	// Determine the Localgroup type first. We use the Localgroup as the source of truth
-	// here versus the state so that we can support import.
-	ft, err := Localgroup.FindType(fo)
-	if err != nil {
-		return fmt.Errorf("cannot determine Localgroup type: %s", err)
+	if thisGroup, err := ssoadminClient.FindGroup(ctx, d.Get("name").(string)); err != nil {
+		log.Println("[INFO] Setting the values")
+		_ = d.Set("name", thisGroup.Id.Name)
+		_ = d.Set("details", thisGroup.Details)
 	}
-
-	// Again, to support a clean import (which is done off of absolute path to
-	// the Localgroup), we discover the datacenter from the path (if it's a thing).
-	var dc *object.Datacenter
-	p := fo.InventoryPath
-	if ft != Localgroup.VSphereLocalgroupTypeDatacenter {
-		particle := Localgroup.RootPathParticle(ft)
-		dcp, err := particle.SplitDatacenter(p)
-		if err != nil {
-			return fmt.Errorf("cannot determine datacenter path: %s", err)
-		}
-		dc, err = getDatacenter(client, dcp)
-		if err != nil {
-			return fmt.Errorf("cannot find datacenter from path %q: %s", dcp, err)
-		}
-		relative, err := particle.SplitRelative(p)
-		if err != nil {
-			return fmt.Errorf("cannot determine relative Localgroup path: %s", err)
-		}
-		p = relative
-	}
-
-	_ = d.Set("path", Localgroup.NormalizePath(p))
-	_ = d.Set("type", ft)
-	if dc != nil {
-		_ = d.Set("datacenter_id", dc.Reference().Value)
-	}
-
-	// Read tags if we have the ability to do so
-	if tagsClient, _ := meta.(*Client).TagsManager(); tagsClient != nil {
-		if err := readTagsForResource(tagsClient, fo, d); err != nil {
-			return fmt.Errorf("error reading tags: %s", err)
-		}
-	}
-
-	// Read custom attributes
-	if customattribute.IsSupported(client) {
-		moLocalgroup, err := Localgroup.Properties(fo)
-		if err != nil {
-			return err
-		}
-		customattribute.ReadFromResource(moLocalgroup.Entity(), d)
-	}
-
 	return nil
 }
 
-func resourceVSphereLocalgroupUpdate(d *schema.ResourceData, meta interface{}) error {
+/* func resourceVSphereLocalgroupUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*Client).vimClient
 	tagsClient, err := tagsManagerIfDefined(d, meta)
 	if err != nil {
@@ -222,7 +150,7 @@ func resourceVSphereLocalgroupUpdate(d *schema.ResourceData, meta interface{}) e
 			// new path
 			ctx, cancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 			defer cancel()
-			task, err := newpa.MoveInto(ctx, []types.ManagedObjectReference{fo.Reference()})
+			task, err := newpa.MoveInto(ctx, []vim.ManagedObjectReference{fo.Reference()})
 			if err != nil {
 				return fmt.Errorf("could not move Localgroup: %s", err)
 			}
@@ -285,4 +213,4 @@ func resourceVSphereLocalgroupImport(d *schema.ResourceData, meta interface{}) (
 	}
 	d.SetId(targetLocalgroup.Reference().Value)
 	return []*schema.ResourceData{d}, nil
-}
+} */
