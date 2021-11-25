@@ -87,6 +87,8 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
+# github.com/google/uuid v1.2.0
+github.com/google/uuid
 # github.com/googleapis/gax-go/v2 v2.0.5
 github.com/googleapis/gax-go/v2
 # github.com/hashicorp/errwrap v1.0.0
@@ -229,6 +231,8 @@ github.com/vmware/govmomi/session/keepalive
 github.com/vmware/govmomi/ssoadmin
 github.com/vmware/govmomi/ssoadmin/methods
 github.com/vmware/govmomi/ssoadmin/types
+github.com/vmware/govmomi/sts
+github.com/vmware/govmomi/sts/internal
 github.com/vmware/govmomi/task
 github.com/vmware/govmomi/vapi/internal
 github.com/vmware/govmomi/vapi/library

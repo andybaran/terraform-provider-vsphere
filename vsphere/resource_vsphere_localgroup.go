@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-provider-vsphere/vsphere/internal/helper/customattribute"
 	"github.com/vmware/govmomi/ssoadmin"
 	"github.com/vmware/govmomi/ssoadmin/types"
+	//	"github.com/vmware/govmomi/vim25"
+	//	"github.com/vmware/govmomi/vim25/soap"
 )
 
 func resourceVSphereLocalgroup() *schema.Resource {
@@ -47,26 +49,33 @@ func resourceVSphereLocalgroup() *schema.Resource {
 }
 
 func resourceVSphereLocalgroupCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*Client).vimClient
+	client := meta.(*Client).ssoAdminClient
 	ctx, cancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 	defer cancel()
 
+	/*zestfullyc, err := vim25.NewClient(ctx, soap.NewClient(meta.(*Client).vimClient.URL(), true))
+
+
+	println("made it this far")
 	ssoadminClient, err := ssoadmin.NewClient(ctx, client.Client)
 	if err != nil {
 		return fmt.Errorf("error creating ssoadmin client %s", err)
 	}
-
-	err = ssoadminClient.Login(ctx)
+	println("trying to log in....")
+	err := client.Login(ctx)
 	if err != nil {
-		return fmt.Errorf("eror logging in...?: %s", err)
+		return fmt.Errorf("error logging in >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s", err)
 	}
-	println("We're logged in")
-	err = ssoadminClient.CreateGroup(ctx, d.Get("name").(string), types.AdminGroupDetails{Description: d.Get("details").(string)})
+	println("We're logged in")*/
+
+	err := client.CreateGroup(ctx, d.Get("name").(string), types.AdminGroupDetails{Description: d.Get("details").(string)})
+
 	if err != nil {
 		return fmt.Errorf("error creating local group: %s", err)
 	}
 
-	thisGroup, err := ssoadminClient.FindGroup(ctx, d.Get("name").(string))
+	thisGroup, err := client.FindGroup(ctx, d.Get("name").(string))
+	println(thisGroup)
 
 	d.SetId(thisGroup.Id.Name)
 

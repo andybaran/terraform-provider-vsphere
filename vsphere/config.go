@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/vmware/govmomi/ssoadmin"
 	"github.com/vmware/govmomi/vapi/rest"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -22,6 +23,7 @@ import (
 	"github.com/vmware/govmomi/session"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/session/keepalive"
+	"github.com/vmware/govmomi/sts"
 	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/debug"
@@ -42,6 +44,10 @@ type Client struct {
 
 	// The REST client used for tags and content library.
 	restClient *rest.Client
+
+	// The SSO client used for sso settings and local users & groups.
+	// see here for inspiration : https://github.com/vmware/govmomi/blob/master/govc/sso/client.go
+	ssoAdminClient *ssoadmin.Client
 
 	// client timeout for certain operations
 	timeout time.Duration
@@ -207,6 +213,54 @@ func (c *Config) Client() (*Client, error) {
 
 	client.timeout = c.APITimeout
 
+	// Set up SSOADmin client
+	ssoc, err := ssoadmin.NewClient(ctx, client.vimClient.Client)
+	if err != nil {
+		println("ssoadmin new client error: ", err.Error())
+		return nil, err
+	}
+	println("made a ssoadmin client")
+
+	header := soap.Header{
+		Security: &sts.Signer{
+			Certificate: client.vimClient.Client.Certificate(),
+		},
+	}
+
+	tokens, err := sts.NewClient(ctx, client.vimClient.Client)
+	if err != nil {
+		println("sts newclient error: ", err.Error())
+		return nil, err
+	}
+
+	req := sts.TokenRequest{
+		Userinfo:    url.UserPassword(c.User, c.Password), //client.vimClient.Client.URL().User,
+		Certificate: client.vimClient.Client.Certificate(),
+	}
+
+	//println(client.vimClient.Client.URL())
+
+	header.Security, err = tokens.Issue(ctx, req)
+	if err != nil {
+		println("token issue error: ", err.Error())
+		println("req User info: ", req.Userinfo.String())
+		println("req Token: ", req.Token)
+		return nil, err
+	}
+
+	//use the token issued on line 311 to login to the ssoadmin service
+	if err = ssoc.Login(ssoc.WithHeader(ctx, header)); err != nil {
+		println("login error: ", err)
+		return nil, err
+	}
+
+	defer func() {
+		if err := ssoc.Logout(ctx); err != nil {
+			log.Printf("user logout error: %v", err)
+		}
+	}()
+
+	client.ssoAdminClient = ssoc
 	return client, nil
 }
 

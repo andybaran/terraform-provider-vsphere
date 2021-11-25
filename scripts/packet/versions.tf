@@ -4,7 +4,7 @@ terraform {
       source = "hashicorp/local"
     }
     packet = {
-      source = "terraform-providers/packet"
+      source = "packethost/packet"
     }
     vsphere = {
       source = "hashicorp/vsphere"
